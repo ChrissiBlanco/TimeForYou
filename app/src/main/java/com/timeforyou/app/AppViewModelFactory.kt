@@ -2,7 +2,7 @@ package com.timeforyou.app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.timeforyou.app.data.repository.TimeRepository
+import com.timeforyou.app.domain.repository.TimeRepository
 import com.timeforyou.app.ui.coach.CoachViewModel
 import com.timeforyou.app.ui.home.HomeViewModel
 import com.timeforyou.app.ui.insights.InsightsViewModel

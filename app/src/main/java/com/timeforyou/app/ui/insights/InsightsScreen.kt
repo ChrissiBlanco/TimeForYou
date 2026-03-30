@@ -30,7 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.timeforyou.app.data.repository.DayAggregate
+import com.timeforyou.app.domain.model.DayAggregate
 import com.timeforyou.app.ui.theme.CardShape2xl
 import com.timeforyou.app.ui.theme.Spacing
 import com.timeforyou.app.ui.theme.WellnessBackgroundBrushes

@@ -2,8 +2,8 @@ package com.timeforyou.app
 
 import android.app.Application
 import com.timeforyou.app.data.local.AppDatabase
-import com.timeforyou.app.data.repository.TimeRepository
 import com.timeforyou.app.data.repository.TimeRepositoryImpl
+import com.timeforyou.app.domain.repository.TimeRepository
 
 class TimeForYouApplication : Application() {
 

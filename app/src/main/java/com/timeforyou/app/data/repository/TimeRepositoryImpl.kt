@@ -2,6 +2,10 @@ package com.timeforyou.app.data.repository
 
 import com.timeforyou.app.data.local.BehaviorLogDao
 import com.timeforyou.app.data.local.BehaviorLogEntity
+import com.timeforyou.app.data.mapper.toDomain
+import com.timeforyou.app.domain.model.BehaviorLog
+import com.timeforyou.app.domain.model.DayAggregate
+import com.timeforyou.app.domain.repository.TimeRepository
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -13,7 +17,8 @@ class TimeRepositoryImpl(
     private val zoneId: ZoneId = ZoneId.systemDefault(),
 ) : TimeRepository {
 
-    override fun observeLogs(): Flow<List<BehaviorLogEntity>> = dao.observeAll()
+    override fun observeLogs(): Flow<List<BehaviorLog>> =
+        dao.observeAll().map { entities -> entities.map { it.toDomain() } }
 
     override fun observeStreak(): Flow<Int> =
         dao.observeAll().map { logs -> computeStreak(logs, zoneId) }

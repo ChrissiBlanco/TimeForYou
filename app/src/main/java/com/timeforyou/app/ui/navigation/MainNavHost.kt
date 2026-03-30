@@ -10,7 +10,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.timeforyou.app.AppViewModelFactory
-import com.timeforyou.app.data.repository.TimeRepository
+import com.timeforyou.app.domain.repository.TimeRepository
 import com.timeforyou.app.ui.coach.CoachScreen
 import com.timeforyou.app.ui.coach.CoachViewModel
 import com.timeforyou.app.ui.home.HomeScreen

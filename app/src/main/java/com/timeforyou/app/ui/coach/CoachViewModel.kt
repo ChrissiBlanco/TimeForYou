@@ -2,7 +2,7 @@ package com.timeforyou.app.ui.coach
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.timeforyou.app.data.repository.TimeRepository
+import com.timeforyou.app.domain.repository.TimeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
