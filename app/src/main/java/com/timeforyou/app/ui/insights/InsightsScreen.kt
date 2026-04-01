@@ -19,16 +19,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.Lifecycle.State
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.timeforyou.app.domain.model.DayAggregate
 import com.timeforyou.app.ui.theme.CardShape2xl
@@ -43,11 +46,20 @@ import java.util.Locale
 @Composable
 fun InsightsScreen(viewModel: InsightsViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val weekAnimated by animateFloatAsState(
-        targetValue = state.weekCompletionFraction,
-        animationSpec = tween(450, easing = FastOutSlowInEasing),
-        label = "weekFill",
-    )
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.onResume()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(State.RESUMED)) {
+            viewModel.onResume()
+        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     val dayFormatter = DateTimeFormatter.ofPattern("EEE", Locale.getDefault())
     val maxCount = (state.lastSevenDays.maxOfOrNull { it.logCount } ?: 0).coerceAtLeast(1)
     val zone = ZoneId.systemDefault()
@@ -75,38 +87,6 @@ fun InsightsScreen(viewModel: InsightsViewModel) {
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = CardShape2xl,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(Spacing.lg),
-                    verticalArrangement = Arrangement.spacedBy(Spacing.md),
-                ) {
-                    Text(
-                        text = "Week presence",
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                    Text(
-                        text = "${state.lastSevenDays.count { it.logCount > 0 }} of 7 days with activity · ${state.totalLogsThisWeek} logs",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    LinearProgressIndicator(
-                        progress = { weekAnimated },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(12.dp),
-                        color = WellnessPrimary,
-                        trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                        strokeCap = StrokeCap.Round,
-                    )
-                }
-            }
 
             Card(
                 modifier = Modifier.fillMaxWidth(),

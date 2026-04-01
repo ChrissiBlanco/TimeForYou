@@ -10,6 +10,8 @@ interface TimeRepository {
     fun observeTodayLogCount(): Flow<Int>
     fun observeLastSevenDays(): Flow<List<DayAggregate>>
     fun observeWeekCompletionFraction(): Flow<Float>
+    /** Recompute rolling day windows (e.g. last 7 days) using the current local date. */
+    fun refreshCalendarWindow()
     suspend fun logMoment(
         category: String? = null,
         note: String? = null,

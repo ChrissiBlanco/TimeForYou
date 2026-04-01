@@ -13,12 +13,13 @@ import androidx.navigation.compose.rememberNavController
 import com.timeforyou.app.ui.navigation.BottomNavigationBar
 import com.timeforyou.app.ui.navigation.MainNavHost
 import com.timeforyou.app.ui.theme.TimeForYouTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val app = application as TimeForYouApplication
         setContent {
             TimeForYouTheme {
                 val navController = rememberNavController()
@@ -44,7 +45,6 @@ class MainActivity : ComponentActivity() {
                 ) { paddingValues ->
                     MainNavHost(
                         navController = navController,
-                        repository = app.repository,
                         contentPadding = paddingValues,
                     )
                 }
