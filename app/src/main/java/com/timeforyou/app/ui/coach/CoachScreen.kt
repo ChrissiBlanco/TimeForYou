@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,18 +43,14 @@ fun CoachScreen(viewModel: CoachViewModel) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = Spacing.screenHorizontal)
                 .padding(top = Spacing.xl, bottom = Spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             Text(
                 text = "Coach",
                 style = MaterialTheme.typography.displayMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            Text(
-                text = state.headerMessage,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = CardShape2xl,
@@ -65,13 +62,8 @@ fun CoachScreen(viewModel: CoachViewModel) {
                     modifier = Modifier.padding(Spacing.lg),
                     verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                 ) {
-                    Text(
-                        text = "Personalized insight",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = WellnessPrimary,
-                    )
                     when {
-                        state.aiAdviceLoading ->
+                        state.aiAdviceLoading && state.insightSummary == null ->
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -84,67 +76,90 @@ fun CoachScreen(viewModel: CoachViewModel) {
                                     color = WellnessPrimary,
                                 )
                             }
-                        state.aiAdviceDisabledReason != null ->
-                            Text(
-                                text = state.aiAdviceDisabledReason.orEmpty(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                        state.aiAdviceError != null ->
-                            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        else -> {
+                            if (state.insightSummary != null) {
                                 Text(
-                                    text = state.aiAdviceError.orEmpty(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.error,
+                                    text = state.insightSummary.orEmpty(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = WellnessPrimary,
                                 )
-                                TextButton(onClick = { viewModel.retryCoachAdvice() }) {
-                                    Text("Try again")
+                            } else {
+                                Text(
+                                    text = "Insight will appear in a moment.",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = WellnessPrimary,
+                                )
+                            }
+                            if (state.aiAdviceError != null) {
+                                Column(
+                                    modifier = Modifier.padding(top = Spacing.sm),
+                                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                                ) {
+                                    Text(
+                                        text = state.aiAdviceError.orEmpty(),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = WellnessPrimary,
+                                    )
+                                    TextButton(onClick = { viewModel.retryCoachAdvice() }) {
+                                        Text("Try again")
+                                    }
                                 }
                             }
-                        state.aiAdviceText != null ->
-                            Text(
-                                text = state.aiAdviceText.orEmpty(),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                        !state.aiAdviceLoading &&
-                            state.aiAdviceText == null &&
-                            state.aiAdviceError == null &&
-                            state.aiAdviceDisabledReason == null ->
-                            Text(
-                                text = "Insight will appear in a moment.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        }
+                    }
+                    if (state.aiAdviceDisabledReason != null) {
+                        Text(
+                            text = state.aiAdviceDisabledReason.orEmpty(),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = WellnessPrimary,
+                        )
                     }
                 }
             }
 
-            state.tips.forEach { tip ->
+            if (state.tips.isNotEmpty()) {
+                Text(
+                    text = "Motivation & ideas",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(top = Spacing.sm),
+                )
+
                 Card(
-                    modifier = Modifier.padding(vertical = Spacing.xs),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = CardShape2xl,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 ) {
                     Column(
                         modifier = Modifier.padding(Spacing.lg),
-                        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.md),
                     ) {
-                        Text(
-                            text = tip.title,
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                        Text(
-                            text = tip.body,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        state.tips.forEachIndexed { index, tip ->
+                            if (index > 0) {
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                                )
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                                Text(
+                                    text = tip.title,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = tip.body,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
                 }
             }
+
             Spacer(modifier = Modifier.height(Spacing.md))
         }
     }

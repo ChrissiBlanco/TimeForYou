@@ -2,10 +2,10 @@ package com.timeforyou.app.ui.coach
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.timeforyou.app.domain.CoachHeaderMessage
 import com.timeforyou.app.domain.model.CoachActivitySummary
 import com.timeforyou.app.domain.model.CoachStructuredAdvice
 import com.timeforyou.app.domain.repository.CoachAdviceRepository
+import com.timeforyou.app.data.profile.ProfilePreferences
 import com.timeforyou.app.domain.repository.TimeRepository
 import com.timeforyou.app.domain.usecase.BuildCoachActivitySummaryUseCase
 import com.timeforyou.app.domain.usecase.GetCoachAdviceUseCase
@@ -28,8 +28,9 @@ data class CoachTip(
 data class CoachUiState(
     val tips: List<CoachTip> = emptyList(),
     val streak: Int = 0,
-    val headerMessage: String = "Small steps, gentle pace.",
-    val aiAdviceText: String? = null,
+    val displayName: String = ProfilePreferences.DEFAULT_NAME,
+    /** 1–2 sentences: streak + typical log time; from AI or local fallback. */
+    val insightSummary: String? = null,
     val aiAdviceLoading: Boolean = false,
     val aiAdviceError: String? = null,
     val aiAdviceDisabledReason: String? = null,
@@ -38,6 +39,7 @@ data class CoachUiState(
 @HiltViewModel
 class CoachViewModel @Inject constructor(
     private val repository: TimeRepository,
+    private val profilePreferences: ProfilePreferences,
     private val buildCoachActivitySummary: BuildCoachActivitySummaryUseCase,
     private val getCoachAdvice: GetCoachAdviceUseCase,
 ) : ViewModel() {
@@ -54,26 +56,27 @@ class CoachViewModel @Inject constructor(
                 repository.observeTodayLogCount(),
                 repository.observeLogs(),
                 repository.observeLastSevenDays(),
-            ) { streak, today, logs, days ->
+                profilePreferences.displayName,
+            ) { streak, today, logs, days, displayName ->
                 val summary = buildCoachActivitySummary(
                     streak = streak,
                     todayLogCount = today,
                     logs = logs,
                     lastSevenDays = days,
+                    displayName = displayName,
                 )
-                val header = CoachHeaderMessage.fromActivity(streak, today)
-                Triple(streak, header, summary)
+                Pair(streak, summary)
             }
                 .debounce(400L)
                 .distinctUntilChanged { a, b ->
-                    a.third.cacheFingerprint() == b.third.cacheFingerprint()
+                    a.second.cacheFingerprint() == b.second.cacheFingerprint()
                 }
-                .collect { (streak, header, summary) ->
+                .collect { (streak, summary) ->
                     latestCoachSummary = summary
                     _uiState.update {
                         it.copy(
                             streak = streak,
-                            headerMessage = header,
+                            displayName = summary.displayName,
                             aiAdviceLoading = true,
                             aiAdviceError = null,
                         )
@@ -99,9 +102,11 @@ class CoachViewModel @Inject constructor(
                 result.isSuccess -> {
                     val advice = result.getOrThrow()
                     val tipsFromAi = advice.tips.map { CoachTip(title = it.title, body = it.body) }
+                    val insight = advice.insightSummary.takeIf { it.isNotBlank() }
+                        ?: behaviorInsightSummary(summary)
                     state.copy(
                         tips = tipsFromAi.ifEmpty { behaviorFallbackTips(summary) },
-                        aiAdviceText = advice.reflection.takeIf { it.isNotBlank() },
+                        insightSummary = insight,
                         aiAdviceLoading = false,
                         aiAdviceError = null,
                         aiAdviceDisabledReason = null,
@@ -111,24 +116,51 @@ class CoachViewModel @Inject constructor(
                     CoachAdviceRepository.MISSING_API_KEY_MESSAGE ->
                     state.copy(
                         tips = behaviorFallbackTips(summary),
+                        insightSummary = behaviorInsightSummary(summary),
                         aiAdviceLoading = false,
                         aiAdviceDisabledReason =
-                            "Personalized coach uses OpenAI. Add OPENAI_API_KEY to local.properties " +
-                                "and rebuild. Tips below use your recent activity only.",
-                        aiAdviceText = null,
+                            "Add OPENAI_API_KEY in local.properties for richer coach wording. " +
+                                "Summary and suggestions below use your activity only.",
                         aiAdviceError = null,
                     )
                 else ->
                     state.copy(
                         tips = behaviorFallbackTips(summary),
+                        insightSummary = behaviorInsightSummary(summary),
                         aiAdviceLoading = false,
                         aiAdviceError =
                             result.exceptionOrNull()?.message
                                 ?: "Could not load coach insight.",
-                        aiAdviceText = null,
                     )
             }
         }
+    }
+
+    private fun behaviorInsightSummary(summary: CoachActivitySummary): String {
+        val rawName = summary.displayName.trim()
+        val useName = rawName.isNotEmpty() && !rawName.equals("You", ignoreCase = true)
+        val streakPart =
+            when {
+                summary.streak <= 0 ->
+                    if (useName) {
+                        "$rawName, you're starting fresh—any single log is a win."
+                    } else {
+                        "You're starting fresh—any single log is a win."
+                    }
+                summary.streak == 1 ->
+                    if (useName) {
+                        "$rawName, you've logged at least one day in a row."
+                    } else {
+                        "You've logged at least one day in a row."
+                    }
+                else ->
+                    if (useName) {
+                        "$rawName, you're on a ${summary.streak}-day logging streak."
+                    } else {
+                        "You're on a ${summary.streak}-day logging streak."
+                    }
+            }
+        return "$streakPart ${summary.typicalLogTimeDescription}"
     }
 
     private fun behaviorFallbackTips(summary: CoachActivitySummary): List<CoachTip> {
@@ -137,7 +169,8 @@ class CoachViewModel @Inject constructor(
             tips.add(
                 CoachTip(
                     title = "First gentle log",
-                    body = "Pick one small moment from today—noticing thirst, light, or a breath—and log it when you can.",
+                    body = "Noticing one real moment—even thirst or light—creates a tiny pause that belongs to you; " +
+                        "log it when you can.",
                 ),
             )
         }
@@ -145,7 +178,8 @@ class CoachViewModel @Inject constructor(
             tips.add(
                 CoachTip(
                     title = "Keep your streak kind",
-                    body = "You're on a ${summary.streak}-day streak; one tiny note today is enough if energy is low.",
+                    body = "A single line today protects your rhythm without pressure—" +
+                        "small consistency is how time-for-you stays real when life is loud.",
                 ),
             )
         }
@@ -179,7 +213,8 @@ class CoachViewModel @Inject constructor(
             listOf(
                 CoachTip(
                     title = "Small step",
-                    body = "Log one honest moment when it feels kind, not when it's perfect.",
+                    body = "Logging when it feels kind—not when it's polished—trains the app to mirror your real life, " +
+                        "not a performance.",
                 ),
             )
         }

@@ -10,6 +10,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,11 +19,21 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+private val defaultMomentSuggestions = listOf(
+    "Short walk",
+    "Breathing pause",
+    "Stretch break",
+)
+
 data class HomeUiState(
     /** True once week data is loaded and today (last bucket) has no logs yet. */
     val needsTodayLogReminder: Boolean = false,
     /** Today’s logs, newest first. */
     val todaysMoments: List<BehaviorLog> = emptyList(),
+    /** Consecutive days with at least one log (0 if none). */
+    val streak: Int = 0,
+    /** Three chips in the log dialog: from past notes, padded with defaults. */
+    val momentSuggestions: List<String> = defaultMomentSuggestions,
     val headline: String = "Time for you",
     val subtitle: String = "Log a mindful moment today.",
 )
@@ -49,11 +60,12 @@ class HomeViewModel @Inject constructor(
             combine(
                 repository.observeLastSevenDays(),
                 repository.observeLogs(),
+                repository.observeStreak(),
                 refreshOnResume,
                 midnightTick,
-            ) { days, logs, _, _ ->
-                Pair(days, logs)
-            }.collect { (days, logs) ->
+            ) { days, logs, streak, _, _ ->
+                Triple(days, logs, streak)
+            }.collect { (days, logs, streak) ->
                 val reminder = days.isNotEmpty() && days.last().logCount == 0
                 val today = LocalDate.now(zoneId)
                 val todaysMoments = logs
@@ -67,6 +79,8 @@ class HomeViewModel @Inject constructor(
                     it.copy(
                         needsTodayLogReminder = reminder,
                         todaysMoments = todaysMoments,
+                        streak = streak,
+                        momentSuggestions = buildMomentSuggestions(logs),
                         subtitle = if (reminder) {
                             "There’s space here for you whenever you’re ready."
                         } else {
@@ -110,5 +124,35 @@ class HomeViewModel @Inject constructor(
                 timestampEpochMillis = timestampEpochMillis,
             )
         }
+    }
+
+    private fun buildMomentSuggestions(logs: List<BehaviorLog>): List<String> {
+        val fromHistory = logs
+            .asSequence()
+            .sortedByDescending { it.timestampEpochMillis }
+            .mapNotNull { it.note?.trim()?.takeIf { n -> n.isNotEmpty() } }
+            .distinctBy { it.lowercase(Locale.getDefault()) }
+            .map { truncateForChip(it) }
+            .take(3)
+            .toList()
+        if (fromHistory.size >= 3) {
+            return fromHistory.take(3)
+        }
+        val usedLower = fromHistory.map { it.lowercase(Locale.getDefault()) }.toMutableSet()
+        val result = fromHistory.toMutableList()
+        for (fallback in defaultMomentSuggestions) {
+            if (result.size >= 3) break
+            val key = fallback.lowercase(Locale.getDefault())
+            if (key !in usedLower) {
+                result.add(fallback)
+                usedLower.add(key)
+            }
+        }
+        return result.take(3)
+    }
+
+    private fun truncateForChip(note: String): String {
+        val max = 40
+        return if (note.length <= max) note else note.take(max - 1) + "…"
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -82,6 +83,7 @@ fun HomeScreen(viewModel: HomeViewModel) {
         key(logDialogSession) {
             LogMomentDialog(
                 zoneId = zoneId,
+                suggestions = state.momentSuggestions,
                 onDismiss = { showLogMomentDialog = false },
                 onSave = { note, timestamp ->
                     viewModel.logMoment(note, timestamp)
@@ -169,6 +171,35 @@ fun HomeScreen(viewModel: HomeViewModel) {
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(vertical = Spacing.sm),
                 )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.LocalFireDepartment,
+                    contentDescription =
+                        if (state.streak > 0) {
+                            "${state.streak}-day logging streak"
+                        } else {
+                            "Logging streak: not started"
+                        },
+                    modifier = Modifier.size(28.dp),
+                    tint = if (state.streak > 0) WellnessPrimary else MaterialTheme.colorScheme.outline,
+                )
+                Column() {
+                    Text(
+                        text = when {
+                            state.streak <= 0 -> "Streak"
+                            state.streak == 1 -> "1 day streak"
+                            else -> "${state.streak}-day streak"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
 
             if (state.todaysMoments.isNotEmpty()) {
