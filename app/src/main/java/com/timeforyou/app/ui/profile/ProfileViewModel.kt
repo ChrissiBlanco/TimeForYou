@@ -2,7 +2,9 @@ package com.timeforyou.app.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.timeforyou.app.data.repository.TimeRepository
+import com.timeforyou.app.domain.repository.TimeRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,7 +16,8 @@ data class ProfileUiState(
     val clearedMessage: String? = null,
 )
 
-class ProfileViewModel(
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
     private val repository: TimeRepository,
 ) : ViewModel() {
 
@@ -32,9 +35,5 @@ class ProfileViewModel(
                 it.copy(clearedMessage = "Your local logs were cleared.")
             }
         }
-    }
-
-    fun consumeClearedMessage() {
-        _uiState.update { it.copy(clearedMessage = null) }
     }
 }

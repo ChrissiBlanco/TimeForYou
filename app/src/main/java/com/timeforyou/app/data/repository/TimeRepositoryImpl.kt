@@ -2,18 +2,32 @@ package com.timeforyou.app.data.repository
 
 import com.timeforyou.app.data.local.BehaviorLogDao
 import com.timeforyou.app.data.local.BehaviorLogEntity
+import com.timeforyou.app.data.mapper.toDomain
+import com.timeforyou.app.domain.model.BehaviorLog
+import com.timeforyou.app.domain.model.DayAggregate
+import com.timeforyou.app.domain.repository.TimeRepository
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.update
 
 class TimeRepositoryImpl(
     private val dao: BehaviorLogDao,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
 ) : TimeRepository {
 
-    override fun observeLogs(): Flow<List<BehaviorLogEntity>> = dao.observeAll()
+    private val calendarWindowBump = MutableStateFlow(0)
+
+    override fun observeLogs(): Flow<List<BehaviorLog>> =
+        dao.observeAll().map { entities -> entities.map { it.toDomain() } }
 
     override fun observeStreak(): Flow<Int> =
         dao.observeAll().map { logs -> computeStreak(logs, zoneId) }
@@ -27,7 +41,17 @@ class TimeRepositoryImpl(
         }
 
     override fun observeLastSevenDays(): Flow<List<DayAggregate>> =
-        dao.observeAll().map { logs -> aggregateLastDays(logs, zoneId, 7) }
+        combine(
+            dao.observeAll(),
+            localDayTicker(zoneId),
+            calendarWindowBump,
+        ) { logs, _, _ ->
+            aggregateLastDays(logs, zoneId, 7)
+        }
+
+    override fun refreshCalendarWindow() {
+        calendarWindowBump.update { it + 1 }
+    }
 
     override fun observeWeekCompletionFraction(): Flow<Float> =
         observeLastSevenDays().map { days ->
@@ -52,6 +76,27 @@ class TimeRepositoryImpl(
     }
 
     private companion object {
+        /**
+         * Emits once on collect (so rolling windows use today immediately), then after each local midnight.
+         * Keeps last-N-day aggregates correct without a new database write when the calendar day changes.
+         */
+        fun localDayTicker(zone: ZoneId): Flow<Unit> =
+            flow {
+                while (true) {
+                    val now = Instant.now()
+                    val nextMidnight = now.atZone(zone)
+                        .toLocalDate()
+                        .plusDays(1)
+                        .atStartOfDay(zone)
+                        .toInstant()
+                    val millis = Duration.between(now, nextMidnight).toMillis()
+                    if (millis > 0) {
+                        delay(millis)
+                    }
+                    emit(Unit)
+                }
+            }.onStart { emit(Unit) }
+
         fun computeStreak(logs: List<BehaviorLogEntity>, zone: ZoneId): Int {
             if (logs.isEmpty()) return 0
             val daysWithLogs = logs
