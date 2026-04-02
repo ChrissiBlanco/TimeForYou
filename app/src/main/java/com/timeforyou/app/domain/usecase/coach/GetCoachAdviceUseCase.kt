@@ -1,4 +1,4 @@
-package com.timeforyou.app.domain.usecase
+package com.timeforyou.app.domain.usecase.coach
 
 import com.timeforyou.app.domain.model.CoachActivitySummary
 import com.timeforyou.app.domain.model.CoachStructuredAdvice

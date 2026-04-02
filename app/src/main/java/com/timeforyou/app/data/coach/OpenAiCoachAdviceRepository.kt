@@ -92,7 +92,10 @@ class OpenAiCoachAdviceRepository(
             }
         return buildString {
             appendLine("User's recent logging (only use what appears below—do not invent details):")
-            appendLine("- Display name (use in \"insight\" once if not the generic placeholder \"You\"): ${summary.displayName}")
+            appendLine(
+                "- Display name (use in \"insight\" once only if non-empty; if blank, do not address them by name): " +
+                    "\"${summary.displayName}\"",
+            )
             appendLine("- Streak (consecutive days with any log): ${summary.streak}")
             appendLine("- Logs today: ${summary.todayLogCount}")
             appendLine("- Days with at least one log in last 7 days: ${summary.daysWithActivityLast7}/7")
@@ -135,8 +138,8 @@ class OpenAiCoachAdviceRepository(
         private const val SYSTEM_PROMPT =
             "You coach a self-care moment-logging app. Use only the user snapshot—no invented details. " +
                 "JSON shape: " +
-                "\"insight\": exactly 1–2 short sentences. Naturally include their display name once " +
-                "if it is not the placeholder \"You\"; name their streak (if given) and when they tend to log " +
+                "\"insight\": exactly 1–2 short sentences. If display name is non-empty, include it once naturally; " +
+                "if blank, skip any name. Name their streak (if given) and when they tend to log " +
                 "(use the \"typical time of day\" line; if no logs in 7 days, say that gently). " +
                 "Do not give medical or mental-health diagnoses or treatment. " +
                 "\"tips\": array of 1–2 objects {title, body}. Title = the small action. Body = why this " +

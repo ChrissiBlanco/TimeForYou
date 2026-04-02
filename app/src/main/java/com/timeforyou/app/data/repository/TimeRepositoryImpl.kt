@@ -30,10 +30,20 @@ class TimeRepositoryImpl(
         dao.observeAll().map { entities -> entities.map { it.toDomain() } }
 
     override fun observeStreak(): Flow<Int> =
-        dao.observeAll().map { logs -> computeStreak(logs, zoneId) }
+        combine(
+            dao.observeAll(),
+            localDayTicker(zoneId),
+            calendarWindowBump,
+        ) { logs, _, _ ->
+            computeStreak(logs, zoneId)
+        }
 
     override fun observeTodayLogCount(): Flow<Int> =
-        dao.observeAll().map { logs ->
+        combine(
+            dao.observeAll(),
+            localDayTicker(zoneId),
+            calendarWindowBump,
+        ) { logs, _, _ ->
             val today = LocalDate.now(zoneId)
             logs.count { log ->
                 Instant.ofEpochMilli(log.timestampEpochMillis).atZone(zoneId).toLocalDate() == today

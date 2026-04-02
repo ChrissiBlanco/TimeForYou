@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ProfileUiState(
-    val displayName: String = ProfilePreferences.DEFAULT_NAME,
+    val displayName: String = "",
     val clearedMessage: String? = null,
 )
 

@@ -1,4 +1,4 @@
-package com.timeforyou.app.domain.usecase
+package com.timeforyou.app.domain.usecase.coach
 
 import com.timeforyou.app.domain.model.BehaviorLog
 import com.timeforyou.app.domain.model.CoachActivitySummary
@@ -34,7 +34,7 @@ class BuildCoachActivitySummaryUseCase @Inject constructor() {
             totalLogsLast7 = lastSevenDays.sumOf { it.logCount },
             recentNoteExcerpts = excerpts,
             typicalLogTimeDescription = timeDesc,
-            displayName = displayName.trim().ifBlank { "You" },
+            displayName = displayName.trim(),
         )
     }
 

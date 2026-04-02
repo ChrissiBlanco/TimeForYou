@@ -4,13 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.timeforyou.app.domain.model.BehaviorLog
 import com.timeforyou.app.domain.repository.TimeRepository
+import com.timeforyou.app.domain.usecase.home.BuildHomeDashboardSnapshotUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import java.time.Duration
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
-import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,21 +18,15 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-private val defaultMomentSuggestions = listOf(
-    "Short walk",
-    "Breathing pause",
-    "Stretch break",
-)
-
 data class HomeUiState(
-    /** True once week data is loaded and today (last bucket) has no logs yet. */
-    val needsTodayLogReminder: Boolean = false,
     /** Today’s logs, newest first. */
     val todaysMoments: List<BehaviorLog> = emptyList(),
     /** Consecutive days with at least one log (0 if none). */
     val streak: Int = 0,
+    /** Streak would reset if today ends with no log (streak > 0 but nothing logged today). */
+    val streakAtRisk: Boolean = false,
     /** Three chips in the log dialog: from past notes, padded with defaults. */
-    val momentSuggestions: List<String> = defaultMomentSuggestions,
+    val momentSuggestions: List<String> = emptyList(),
     val headline: String = "Time for you",
     val subtitle: String = "Log a mindful moment today.",
 )
@@ -41,6 +34,7 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: TimeRepository,
+    private val buildHomeDashboardSnapshot: BuildHomeDashboardSnapshotUseCase,
 ) : ViewModel() {
 
     private val zoneId: ZoneId = ZoneId.systemDefault()
@@ -48,7 +42,7 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    /** Bumps when the screen resumes so [LocalDate.now] and week buckets recompute without a DB write. */
+    /** Bumps when the screen resumes so [java.time.LocalDate.now] and week buckets recompute without a DB write. */
     private val refreshOnResume = MutableStateFlow(0)
 
     /** Bumps at each local midnight so "today" stays correct if the app stays foregrounded. */
@@ -66,26 +60,14 @@ class HomeViewModel @Inject constructor(
             ) { days, logs, streak, _, _ ->
                 Triple(days, logs, streak)
             }.collect { (days, logs, streak) ->
-                val reminder = days.isNotEmpty() && days.last().logCount == 0
-                val today = LocalDate.now(zoneId)
-                val todaysMoments = logs
-                    .filter { log ->
-                        Instant.ofEpochMilli(log.timestampEpochMillis)
-                            .atZone(zoneId)
-                            .toLocalDate() == today
-                    }
-                    .sortedByDescending { it.timestampEpochMillis }
+                val snapshot = buildHomeDashboardSnapshot(days, logs, streak)
                 _uiState.update {
                     it.copy(
-                        needsTodayLogReminder = reminder,
-                        todaysMoments = todaysMoments,
+                        todaysMoments = snapshot.todaysMoments,
                         streak = streak,
-                        momentSuggestions = buildMomentSuggestions(logs),
-                        subtitle = if (reminder) {
-                            "There’s space here for you whenever you’re ready."
-                        } else {
-                            "So glad you found a moment today."
-                        },
+                        streakAtRisk = snapshot.streakAtRisk,
+                        momentSuggestions = snapshot.momentSuggestions,
+                        subtitle = snapshot.subtitle,
                     )
                 }
             }
@@ -94,6 +76,7 @@ class HomeViewModel @Inject constructor(
 
     fun onResume() {
         refreshOnResume.update { it + 1 }
+        repository.refreshCalendarWindow()
     }
 
     /**
@@ -124,35 +107,5 @@ class HomeViewModel @Inject constructor(
                 timestampEpochMillis = timestampEpochMillis,
             )
         }
-    }
-
-    private fun buildMomentSuggestions(logs: List<BehaviorLog>): List<String> {
-        val fromHistory = logs
-            .asSequence()
-            .sortedByDescending { it.timestampEpochMillis }
-            .mapNotNull { it.note?.trim()?.takeIf { n -> n.isNotEmpty() } }
-            .distinctBy { it.lowercase(Locale.getDefault()) }
-            .map { truncateForChip(it) }
-            .take(3)
-            .toList()
-        if (fromHistory.size >= 3) {
-            return fromHistory.take(3)
-        }
-        val usedLower = fromHistory.map { it.lowercase(Locale.getDefault()) }.toMutableSet()
-        val result = fromHistory.toMutableList()
-        for (fallback in defaultMomentSuggestions) {
-            if (result.size >= 3) break
-            val key = fallback.lowercase(Locale.getDefault())
-            if (key !in usedLower) {
-                result.add(fallback)
-                usedLower.add(key)
-            }
-        }
-        return result.take(3)
-    }
-
-    private fun truncateForChip(note: String): String {
-        val max = 40
-        return if (note.length <= max) note else note.take(max - 1) + "…"
     }
 }

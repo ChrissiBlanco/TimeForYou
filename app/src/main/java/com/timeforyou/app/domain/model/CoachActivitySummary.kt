@@ -12,7 +12,7 @@ data class CoachActivitySummary(
     val recentNoteExcerpts: List<String>,
     /** Derived from recent log timestamps (last 7 days), for coach copy only. */
     val typicalLogTimeDescription: String,
-    /** Display name from profile (may be placeholder "You"). */
+    /** Display name from profile; may be empty if the user cleared it. */
     val displayName: String,
 ) {
     /** Stable key for skipping redundant coach API calls when activity unchanged. */
