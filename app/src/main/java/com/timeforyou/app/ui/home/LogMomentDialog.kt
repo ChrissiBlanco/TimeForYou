@@ -5,14 +5,21 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -24,6 +31,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -35,19 +44,17 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private val logMomentActivitySuggestions = listOf(
+private val defaultLogMomentSuggestions = listOf(
     "Short walk",
     "Breathing pause",
     "Stretch break",
-    "Tea or water",
-    "Journal note",
-    "Phone someone kind",
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LogMomentDialog(
     zoneId: ZoneId,
+    suggestions: List<String> = defaultLogMomentSuggestions,
     onDismiss: () -> Unit,
     onSave: (activityNote: String?, timestampEpochMillis: Long?) -> Unit,
     modifier: Modifier = Modifier,
@@ -59,11 +66,11 @@ fun LogMomentDialog(
     }
 
     var activityText by remember { mutableStateOf("") }
-    var pickedTime by remember { mutableStateOf<LocalTime?>(null) }
+    var pickedTime by remember { mutableStateOf(LocalTime.now()) }
     var showTimePicker by remember { mutableStateOf(false) }
 
     if (showTimePicker) {
-        val baseTime = pickedTime ?: LocalTime.now()
+        val baseTime = pickedTime
         val timePickerState = rememberTimePickerState(
             initialHour = baseTime.hour,
             initialMinute = baseTime.minute,
@@ -91,13 +98,11 @@ fun LogMomentDialog(
         )
     }
 
-    val resolvedTimestamp = pickedTime?.let { t ->
-        LocalDate.now(zoneId)
-            .atTime(t)
-            .atZone(zoneId)
-            .toInstant()
-            .toEpochMilli()
-    }
+    val resolvedTimestamp = LocalDate.now(zoneId)
+        .atTime(pickedTime)
+        .atZone(zoneId)
+        .toInstant()
+        .toEpochMilli()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -122,13 +127,13 @@ fun LogMomentDialog(
                 modifier = modifier
                     .widthIn(max = 400.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
             ) {
                 OutlinedTextField(
                     value = activityText,
                     onValueChange = { activityText = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Activity (optional)") },
+                    label = { Text("Activity") },
                     placeholder = { Text("What did you do?") },
                     singleLine = false,
                     minLines = 1,
@@ -137,50 +142,43 @@ fun LogMomentDialog(
                         capitalization = KeyboardCapitalization.Sentences,
                     ),
                 )
-                Text(
-                    text = "Suggestions",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    logMomentActivitySuggestions.forEach { suggestion ->
+                    suggestions.take(3).forEach { suggestion ->
                         FilterChip(
                             selected = activityText == suggestion,
                             onClick = { activityText = suggestion },
-                            label = { Text(suggestion) },
+                            label = {
+                                Text(
+                                    text = suggestion,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                )
+                            },
+                            modifier = Modifier.height(26.dp),
+                            shape = RoundedCornerShape(8.dp),
                         )
                     }
                 }
-                Text(
-                    text = "Time (optional)",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                when (val t = pickedTime) {
-                    null -> {
-                        Text(
-                            text = "If you skip this, we’ll use the current time.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Spacer(modifier = Modifier.height(Spacing.md))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = pickedTime.format(timeLabelFormatter),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    IconButton(onClick = { showTimePicker = true }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Schedule,
+                            contentDescription = "Change time",
+                            tint = MaterialTheme.colorScheme.primary,
                         )
-                        TextButton(onClick = { showTimePicker = true }) {
-                            Text("Choose time")
-                        }
-                    }
-                    else -> {
-                        Text(
-                            text = t.format(timeLabelFormatter),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        TextButton(onClick = { pickedTime = null }) {
-                            Text("Clear time")
-                        }
-                        TextButton(onClick = { showTimePicker = true }) {
-                            Text("Change")
-                        }
                     }
                 }
             }
