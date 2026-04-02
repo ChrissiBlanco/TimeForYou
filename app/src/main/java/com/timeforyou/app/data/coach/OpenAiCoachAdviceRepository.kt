@@ -92,13 +92,15 @@ class OpenAiCoachAdviceRepository(
             }
         return buildString {
             appendLine("User's recent logging (only use what appears below—do not invent details):")
+            appendLine(
+                "- Display name (use in \"insight\" once only if non-empty; if blank, do not address them by name): " +
+                    "\"${summary.displayName}\"",
+            )
             appendLine("- Streak (consecutive days with any log): ${summary.streak}")
             appendLine("- Logs today: ${summary.todayLogCount}")
-            appendLine(
-                "- Days with at least one log in last 7 days: " +
-                    "${summary.daysWithActivityLast7}/7",
-            )
+            appendLine("- Days with at least one log in last 7 days: ${summary.daysWithActivityLast7}/7")
             appendLine("- Total logs in last 7 days: ${summary.totalLogsLast7}")
+            appendLine("- Typical time of day (from last-7-day timestamps): ${summary.typicalLogTimeDescription}")
             appendLine("Recent short activity labels (may be empty):")
             appendLine(excerptsBlock)
         }
@@ -108,10 +110,14 @@ class OpenAiCoachAdviceRepository(
         val jsonText = raw.trim().removeSurrounding("```json", "```").removeSurrounding("```").trim()
         val root = runCatching { JSONObject(jsonText) }.getOrNull()
             ?: return CoachStructuredAdvice(
-                reflection = raw.trim(),
+                insightSummary = raw.trim(),
                 tips = emptyList(),
             )
-        val reflection = root.optString("reflection").trim().ifEmpty { raw.trim() }
+        val insightSummary = listOf(
+            root.optString("insight"),
+            root.optString("insight_summary"),
+            root.optString("reflection"),
+        ).firstOrNull { it.isNotBlank() }?.trim().orEmpty().ifEmpty { raw.trim() }
         val tips = mutableListOf<CoachAdviceTip>()
         val arr = root.optJSONArray("tips")
         if (arr != null) {
@@ -124,19 +130,22 @@ class OpenAiCoachAdviceRepository(
                 }
             }
         }
-        return CoachStructuredAdvice(reflection = reflection, tips = tips)
+        return CoachStructuredAdvice(insightSummary = insightSummary, tips = tips)
     }
 
     companion object {
         private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
         private const val SYSTEM_PROMPT =
-            "You coach self-care logging. The user message is their recent activity only. " +
-                "In 1 short sentence: briefly mirror their pattern using the numbers/labels " +
-                "(e.g. streak, logs today, how consistent this week), then give 1–2 concrete " +
-                "things to do today that fit that pattern—not generic wellness tips. " +
-                "Warm and practical. No diagnoses or treatment; don't assume facts not in the data. " +
-                "Put the pattern-mirror in JSON key \"reflection\". Put each action in \"tips\" as " +
-                "{title, body} (1–2 items). Output only one JSON object, no markdown."
+            "You coach a self-care moment-logging app. Use only the user snapshot—no invented details. " +
+                "JSON shape: " +
+                "\"insight\": exactly 1–2 short sentences. If display name is non-empty, include it once naturally; " +
+                "if blank, skip any name. Name their streak (if given) and when they tend to log " +
+                "(use the \"typical time of day\" line; if no logs in 7 days, say that gently). " +
+                "Do not give medical or mental-health diagnoses or treatment. " +
+                "\"tips\": array of 1–2 objects {title, body}. Title = the small action. Body = why this " +
+                "is worth doing as real time for themselves—one short phrase on how it rests or restores " +
+                "them—plus the concrete step (not generic platitudes). " +
+                "Output only one JSON object with keys insight and tips. No markdown."
     }
 }
 

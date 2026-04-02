@@ -1,7 +1,8 @@
 package com.timeforyou.app.domain.model
 
 data class CoachStructuredAdvice(
-    val reflection: String,
+    /** 1–2 sentences: streak + when they tend to log; snapshot-grounded only. */
+    val insightSummary: String,
     val tips: List<CoachAdviceTip>,
 )
 
