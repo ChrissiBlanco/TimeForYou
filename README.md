@@ -14,19 +14,19 @@ Android app for logging small mindful moments, tracking gentle streaks, and read
 Full UI notes and tables live in **[docs/README.md](docs/README.md)**. Previews:
 
 **Home (streak at risk)**  
-![Home streak at risk](docs/screenshots/home-streak-at-risk.png)
+<img src="docs/screenshots/home-streak-at-risk.png" alt="Home streak at risk" width="260" />
 
 **Home (streak + today)**  
-![Home with streak](docs/screenshots/home-with-streak.png)
+<img src="docs/screenshots/home-with-streak.png" alt="Home with streak" width="260" />
 
 **Coach**  
-![Coach](docs/screenshots/coach.png)
+<img src="docs/screenshots/coach.png" alt="Coach" width="260" />
 
 **Insights**  
-![Insights](docs/screenshots/insights.png)
+<img src="docs/screenshots/insights.png" alt="Insights" width="260" />
 
 **Profile**  
-![Profile](docs/screenshots/profile.png)
+<img src="docs/screenshots/profile.png" alt="Profile" width="260" />
 
 ## Requirements
 

@@ -12,7 +12,7 @@ The home hub shows the **“Time for you”** headline, a contextual subtitle, o
 
 When you have an active streak but nothing logged today, the app surfaces a warning-style card and encouraging subtitle.
 
-![Home — streak at risk](screenshots/home-streak-at-risk.png)
+<img src="screenshots/home-streak-at-risk.png" alt="Home — streak at risk" width="260" />
 
 | Element | Role |
 |--------|------|
@@ -25,7 +25,7 @@ When you have an active streak but nothing logged today, the app surfaces a warn
 
 After you log, the streak card reflects a safe state and **Today** lists timestamps and notes.
 
-![Home — streak and today’s log](screenshots/home-with-streak.png)
+<img src="screenshots/home-with-streak.png" alt="Home — streak and today’s log" width="260" />
 
 | Element | Role |
 |--------|------|
@@ -40,7 +40,7 @@ After you log, the streak card reflects a safe state and **Today** lists timesta
 
 Personalized **insight** text plus **ideas** from recent activity (AI-enhanced when configured, otherwise local rules).
 
-![Coach screen](screenshots/coach.png)
+<img src="screenshots/coach.png" alt="Coach screen" width="260" />
 
 | Element | Role |
 |--------|------|
@@ -56,7 +56,7 @@ Personalized **insight** text plus **ideas** from recent activity (AI-enhanced w
 
 Seven-day **volume** chart with a mindful subtitle.
 
-![Insights screen](screenshots/insights.png)
+<img src="screenshots/insights.png" alt="Insights screen" width="260" />
 
 | Element | Role |
 |--------|------|
@@ -71,7 +71,7 @@ Seven-day **volume** chart with a mindful subtitle.
 
 Local-first messaging, **display name**, and **clear all local data**.
 
-![Profile screen](screenshots/profile.png)
+<img src="screenshots/profile.png" alt="Profile screen" width="260" />
 
 | Element | Role |
 |--------|------|
